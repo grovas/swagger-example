@@ -1,0 +1,427 @@
+openapi: 3.0.0
+info:
+  title: Example
+  description: API for mobile clients of Example
+  version: '1.0'
+servers:
+  - url: https://example.com/api/1.0
+    description: Główny serwer api
+paths:
+  /device/register:
+    post:
+      summary: Rejestracja urządzenia mobilnego
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                deviceId:
+                  description: Identyfikator urządzenia
+                  type: string
+                platform:
+                  description: Platforma, na której działa urządzenie
+                  type: integer
+                  enum:
+                    - 1
+                    - 2
+              example:
+                deviceId: ada3qddads89798h1ehd9hqd9h91hdh17hd2d0jd
+                platform: android
+      responses:
+        '200':
+          description: Zapytanie przetworzone prawidłowo
+          content:
+            text/*:
+              schema:
+                $ref: '#/components/schemas/x-ticket'
+        '400':
+          description: Przesłano nieprawidłowe dane
+  /product/list:
+    get:
+      summary: Lista produktów
+      responses:
+        '200':
+          description: Zapytanie przetworzone prawidłowo
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/productList'
+  /product/{id}:
+    description: Pobranie szczegółów książki o wskazanym identyfikatorze
+    parameters:
+      - $ref: '#/components/parameters/productId'
+    get:
+      summary: Szczegóły wybranej książki
+      responses:
+        '200':
+          description: Zapytanie przetworzone prawidłowo
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/product'
+        '400':
+          description: Przesłane dane są niepoprawne
+  /cart/{id}:
+    parameters:
+      - $ref: '#/components/parameters/productId'
+      - $ref: '#/components/parameters/xTicket'
+    put:
+      summary: Dodanie książki do koszyka
+      responses:
+        '204':
+          description: Zapytanie przetworzone prawidłowo
+        '400':
+          description: Przesłane dane są niepoprawne
+    delete:
+      summary: Usuwanie książki z koszyka
+      parameters:
+        - $ref: '#/components/parameters/productId'
+        - $ref: '#/components/parameters/xTicket'
+      responses:
+        '204':
+          description: Zapytanie przetworzone prawidłowo
+        '400':
+          description: Przesłane dane są niepoprawne
+  /cart:
+    description: Pobranie zawartości koszyka
+    parameters:
+      - $ref: '#/components/parameters/xTicket'
+    get:
+      summary: Dane z ostatniego opłaconego zamówienia, lista produktów w koszyku wraz z sumaryczną wartością
+      responses:
+        '200':
+          description: Zapytanie przetworzone prawidłowo
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/cartList'
+        '401':
+          description: Token urządzenia jest niepoprawny lub wygasł
+  /order:
+    parameters:
+      - $ref: '#/components/parameters/xTicket'
+    get:
+      summary: Pobranie danych na temat zamówienia
+      responses:
+        '200':
+          description: Zapytanie przetworzone prawidłowo
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/orderSummary'
+        '401':
+          description: Token urządzenia jest niepoprawny lub wygasł
+    post:
+      summary: Uzupełnienie danych potrzebnych do realizacji zamówienia
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/orderDetail'
+      responses:
+        '200':
+          description: Zapytanie przetworzone prawidłowo
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/paymentData'
+        '400':
+          description: Przesłane dane są niepoprawne
+  /payment/status:
+    description: Sprawdzenie statusu płatności
+    parameters:
+      - $ref: '#/components/parameters/xTicket'
+    post:
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                code:
+                  description: Kod odblokowujący otrzymany w wiadomości e-mail
+                  type: string
+              example:
+                code: ER4TW289
+      summary: Informacje o zamówieniu - status płatności, identyfikator zamówienia,
+      responses:
+        '200':
+          description: Zapytanie przetworzone prawidłowo
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/paymentStatus'
+        '400':
+          description: Niepoprawny kod
+
+components:
+  parameters:
+    productId:
+      name: id
+      in: path
+      required: true
+      description: Identyfikator książki
+      schema:
+        type: integer
+        format: int32
+    xTicket:
+      name: x-ticket
+      in: header
+      description: Token urządzenia
+      required: true
+      schema:
+        type: string
+  schemas:
+    paymentStatus:
+      description: Sprawdzenie czy zamówienie zostało opłacone
+      type: object
+      properties:
+        products:
+          description: Lista identyfikatorów produktów w zamówieniu
+          type: array
+          items:
+            type: integer
+      example:
+        products: [2, 3, 8]
+    paymentProvider:
+      description: Dostawca płatności
+      type: object
+      properties:
+        url:
+          description: Link do strony dostawcy płatności
+          type: string
+          example: https://secure.tpay.com
+        logo:
+          description: Logo dostawcy płatności
+          type: string
+          example: "https://cdn.example.com/4a8a08f09d37b73795649038408b5f33/8277e0910d750195b448797616e091ad.png"
+        logoBig:
+          description: Duże logo dostawcy płatności
+          type: string
+          example: "https://cdn.example.com/4a8a08f09d37b73795649038408b5f33/8277e0910d750195b448797616e091ad.png"
+        name:
+          description: Nazwa dostawcy płatności
+          type: string
+          example: Tpay
+    orderSummary:
+      description: Dane dla klienta do potwierdzenia przed złożeniem zamówienia
+      type: object
+      properties:
+        order:
+          $ref: '#/components/schemas/orderDetail'
+        products:
+          $ref: '#/components/schemas/productList'
+    orderDetail:
+      description: Zachowane dane z ostatniego opłaconego zamówienia do faktury jeśli są
+      type: object
+      properties:
+        ownerName:
+          description: Imię i nazwisko kupującego
+          type: string
+        email:
+          description: Adres email do wysyłki kodu odblokowującego zamówienie
+          type: string
+        street:
+          description: Nazwa ulicy
+          type: string
+        city:
+          description: Nazwa miasta
+          type: string
+        zip:
+          description: Kod pocztowy
+          type: string
+        country:
+          description: Kraj
+          type: string
+        agreement:
+          description: Zgoda na przetwarzanie danych do celów transakcji
+          type: boolean
+      example:
+        ownerName: Marian Opara
+        email: docelowy+email@example.com
+        street: ul. Na rozdrożu 44/55
+        city: Toruń
+        zip: 88-888
+        country: Polska
+        agreement: true
+      required:
+        - ownerName
+        - email
+        - street
+        - city
+        - zip
+        - country
+        - agreement
+    paymentData:
+      $ref: '#/components/schemas/orderResponse'
+    orderResponse:
+      type: object
+      properties:
+        paymentForm:
+          $ref: '#/components/schemas/data'
+        paymentId:
+          description: Identyfikator płatności
+          type: string
+          example: '44'
+    data:
+      description: Formularz z danymi do przesłania do Tpay wraz z adresem URL do wysyłki
+      type: object
+      properties:
+        id:
+          description: Numer sprzedawcy nadany przez Tpay podczas rejestracji
+          type: integer
+          example: 1010
+        amount:
+          description: Kwota transakcji z kropką dziesiętną
+          type: number
+          example: 44.44
+        description:
+          description: Opis transakcji
+          type: string
+          example: '20181004/33'
+        crc:
+          description: Parametr pomocniczy do zidentyfikowania transakcji po stronie sprzedawcy
+          type: string
+          example: 'bd79381824c74cc053a4c47638bcbe5b'
+        md5sum:
+          description: Suma kontrolna używana do weryfikacji parametrów otrzymanych od sprzedawcy. Gdy kod weryfikacyjny sprzedawcy nie jest ustawiony, przyjmuje się, że jego wartość jest pustym ciągiem
+          type: string
+          example: 'ce134db0c9cae7a76e0fc0844a9917a0'
+        result_url:
+          description: URL adres do przesłania resultatu transakcji z wykorzystaniem metody POST.
+          type: string
+          example: 'https://example.com/api/1.0/payment/confirm/ac8118cd45dc74332837859ccd511ce9'
+        return_url:
+          description: Adres URL, na który kient zostanie przekierowany po transakcji zakończonej sukcesem
+          type: string
+          example: 'http://example.com/payment-status/44'
+        return_error_url:
+          description: Adres URL, na który kient zostanie przekierowany po transakcji zakończonej porażką
+          type: string
+          example: 'http://example.com/payment-status/44'
+        email:
+          description: Adres email klienta
+          type: string
+          example: dummy@email.com
+        name:
+          description: Nazwa klienta
+          type: string
+          example: Bronisław Chociszewski
+        accept_tos:
+          description: Pole akceptacji warunków transakcji z tpay.com
+          type: boolean
+          example: 0
+    x-ticket:
+      type: string
+      example:
+        x-ticket: '751e29e8cfc42ca497b6888c8fecb8db0e2b3034145eb8e934c063131a3662310fee20b70a131bbc964676082127fddc884fa9f265b910230c8a00e3aabfbe84'
+    productList:
+      type: array
+      items:
+        $ref: '#/components/schemas/product'
+      example:
+        -
+          id: 4
+          isbn: 987-12-12123-12-1
+          title: 'Ogórki bez podlewania'
+          author: 'Marcelina Szpakówna'
+          description: ''
+          price: 1.99
+          formattedPrice: '1.99 zł'
+          visibility: true
+          hash: '8bb493f48dfe106a14bd1d684c126f33'
+          taxRate: 'zw'
+          license: 'Prime license'
+        -
+          id: 5
+          isbn: 987-12-12123-22-1
+          title: 'Mors na podeście'
+          author: 'Mroczysław Koteł'
+          description: ''
+          price: 2
+          formattedPrice: '2.00 zł'
+          visibility: true
+          hash: '8bb493f48dfe106a14bd1d684c126f6f'
+          taxRate: '23'
+          license: 'External license'
+    cartList:
+      type: array
+      items:
+        $ref: '#/components/schemas/cartSummary'
+    product:
+      type: object
+      properties:
+        id:
+          description: Identyfikator książki
+          type: integer
+        isbn:
+          description: Unikalny 13 cyfrowy, sformatowany numer ISBN książki
+          type: string
+        title:
+          description: Tytuł książki
+          type: string
+        author:
+          description: Autora książki
+          type: string
+        description:
+          description: Nie wymagany opis książki
+          type: string
+        price:
+          description: Cena netto książki w zł
+          type: number
+        formattedPrice:
+          description: Sformatowana netto cena książki
+          type: string
+        visibility:
+          description: Określa, czy książka ma być widoczna dla użytkowników
+          type: boolean
+        hash:
+          description: Hash książki
+          type: string
+        taxRate:
+          description: Wartość podatku VAT
+          type: integer
+        license:
+          description: Nazwa licencji
+          type: string
+      example:
+        id: 4
+        isbn: 987-12-12123-12-1
+        title: 'Ogórki bez podlewania'
+        author: 'Marcelina Szpakówna'
+        description: ''
+        price: 1.99
+        formattedPrice: '1.99 zł'
+        visibility: true
+        hash: '8bb493f48dfe106a14bd1d684c126f33'
+        taxRate: 'zw'
+        license: 'Prime license'
+    cartSummary:
+      type: object
+      properties:
+        lastUserData:
+          $ref: '#/components/schemas/orderDetail'
+        paymentProvider:
+          $ref: '#/components/schemas/paymentProvider'
+        products:
+          $ref: '#/components/schemas/productList'
+        totalGross:
+          description: Wartość koszyka brutto
+          type: number
+          example: 66.66
+        totalGrossFormatted:
+          description: Wartość koszyka brutto sformatowana do wydruku
+          type: string
+          example: '66.66 zł'
+        totalNet:
+          description: Wartość koszyka netto
+          type: number
+          example: 55.55
+        totalNetFormatted:
+          description: Wartość koszyka netto sformatowana do wydruku
+          type: string
+          example: '55.55 zł'
